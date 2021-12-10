@@ -29,10 +29,10 @@
 #include <xboot.h>
 #include <sound/sound.h>
 
-struct sound_t * sound_alloc(int sample)
+struct sound_t* sound_alloc(int sample)
 {
-	struct sound_t * snd;
-	void * source;
+	struct sound_t *snd;
+	void *source;
 
 	if(sample <= 0)
 		return NULL;
@@ -62,7 +62,7 @@ struct sound_t * sound_alloc(int sample)
 	return snd;
 }
 
-void sound_free(struct sound_t * snd)
+void sound_free(struct sound_t *snd)
 {
 	if(snd)
 	{
@@ -72,7 +72,7 @@ void sound_free(struct sound_t * snd)
 	}
 }
 
-static void sound_resample(int16_t * out, int osr, int osample, int16_t * in, int isr, int isample, int channel)
+static void sound_resample(int16_t *out, int osr, int osample, int16_t *in, int isr, int isample, int channel)
 {
 	if(out && in)
 	{
@@ -96,7 +96,8 @@ static void sound_resample(int16_t * out, int osr, int osample, int16_t * in, in
 	}
 }
 
-struct wav_header_t {
+struct wav_header_t
+{
 	uint8_t riff[4];
 	uint32_t riffsz;
 	uint8_t wave[4];
@@ -112,13 +113,13 @@ struct wav_header_t {
 	uint32_t datasz;
 };
 
-static inline struct sound_t * sound_alloc_from_xfs_wav(struct xfs_context_t * ctx, const char * filename)
+static inline struct sound_t* sound_alloc_from_xfs_wav(struct xfs_context_t *ctx, const char *filename)
 {
 	struct wav_header_t header;
-	struct xfs_file_t * file;
-	struct sound_t * snd;
+	struct xfs_file_t *file;
+	struct sound_t *snd;
 	uint32_t tmp[512];
-	uint32_t * inbuf;
+	uint32_t *inbuf;
 	int isample, osample;
 
 	if(!(file = xfs_open_read(ctx, filename)))
@@ -129,22 +130,19 @@ static inline struct sound_t * sound_alloc_from_xfs_wav(struct xfs_context_t * c
 		xfs_close(file);
 		return NULL;
 	}
-/*
-	header.riffsz = be32_to_cpu(header.riffsz);
-	header.fmtsz = be32_to_cpu(header.fmtsz);
-	header.fmttag = be16_to_cpu(header.fmttag);
-	header.channel = be16_to_cpu(header.channel);
-	header.samplerate = be32_to_cpu(header.samplerate);
-	header.byterate = be32_to_cpu(header.byterate);
-	header.align = be16_to_cpu(header.align);
-	header.bps = be16_to_cpu(header.bps);
-	header.datasz = be32_to_cpu(header.datasz);
-*/
-	if( (memcmp(header.riff, "RIFF", 4) != 0) ||
-		(memcmp(header.wave, "WAVE", 4) != 0) ||
-		(memcmp(header.fmt,  "fmt", 3) != 0) ||
-		(memcmp(header.data, "data", 4) != 0) ||
-		(header.fmttag != 1) || (header.datasz < header.align) )
+
+	header.riffsz = le32_to_cpu(header.riffsz);
+	header.fmtsz = le32_to_cpu(header.fmtsz);
+	header.fmttag = le16_to_cpu(header.fmttag);
+	header.channel = le16_to_cpu(header.channel);
+	header.samplerate = le32_to_cpu(header.samplerate);
+	header.byterate = le32_to_cpu(header.byterate);
+	header.align = le16_to_cpu(header.align);
+	header.bps = le16_to_cpu(header.bps);
+	header.datasz = le32_to_cpu(header.datasz);
+
+	if((memcmp(header.riff, "RIFF", 4) != 0) || (memcmp(header.wave, "WAVE", 4) != 0) || (memcmp(header.fmt, "fmt", 3) != 0)
+	        || (memcmp(header.data, "data", 4) != 0) || (header.fmttag != 1) || (header.datasz < header.align))
 	{
 		xfs_close(file);
 		return NULL;
@@ -175,8 +173,8 @@ static inline struct sound_t * sound_alloc_from_xfs_wav(struct xfs_context_t * c
 	{
 		if(header.bps == 8)
 		{
-			int16_t * p = (int16_t *)inbuf;
-			int8_t * q = (int8_t *)tmp;
+			int16_t *p = (int16_t*)inbuf;
+			int8_t *q = (int8_t*)tmp;
 			int16_t v;
 			int64_t n, i;
 			while((n = xfs_read(file, tmp, sizeof(tmp))) > 0)
@@ -191,8 +189,8 @@ static inline struct sound_t * sound_alloc_from_xfs_wav(struct xfs_context_t * c
 		}
 		else if(header.bps == 16)
 		{
-			int16_t * p = (int16_t *)inbuf;
-			int16_t * q = (int16_t *)tmp;
+			int16_t *p = (int16_t*)inbuf;
+			int16_t *q = (int16_t*)tmp;
 			int16_t v;
 			int64_t n, i;
 			while((n = xfs_read(file, tmp, sizeof(tmp))) > 0)
@@ -210,8 +208,8 @@ static inline struct sound_t * sound_alloc_from_xfs_wav(struct xfs_context_t * c
 	{
 		if(header.bps == 8)
 		{
-			int16_t * p = (int16_t *)inbuf;
-			int8_t * q = (int8_t *)tmp;
+			int16_t *p = (int16_t*)inbuf;
+			int8_t *q = (int8_t*)tmp;
 			int64_t n, i;
 			while((n = xfs_read(file, tmp, sizeof(tmp))) > 0)
 			{
@@ -227,7 +225,7 @@ static inline struct sound_t * sound_alloc_from_xfs_wav(struct xfs_context_t * c
 			xfs_read(file, inbuf, header.datasz);
 		}
 	}
-	sound_resample((int16_t *)snd->source, 48000, osample, (int16_t *)inbuf, header.samplerate, isample, 2);
+	sound_resample((int16_t*)snd->source, 48000, osample, (int16_t*)inbuf, header.samplerate, isample, 2);
 	free(inbuf);
 	xfs_close(file);
 
@@ -236,17 +234,17 @@ static inline struct sound_t * sound_alloc_from_xfs_wav(struct xfs_context_t * c
 
 #define STB_VORBIS_NO_STDIO
 #include <stb_vorbis.c.h>
-static inline struct sound_t * sound_alloc_from_xfs_ogg(struct xfs_context_t * ctx, const char * filename)
+static inline struct sound_t* sound_alloc_from_xfs_ogg(struct xfs_context_t *ctx, const char *filename)
 {
-	struct xfs_file_t * file;
-	struct sound_t * snd;
-	uint32_t * inbuf;
+	struct xfs_file_t *file;
+	struct sound_t *snd;
+	uint32_t *inbuf;
 	int isample, osample;
-	uint8_t * mem;
+	uint8_t *mem;
 	int64_t mlen;
 	int channel;
 	int rate;
-	short * ogg;
+	short *ogg;
 
 	if(!(file = xfs_open_read(ctx, filename)))
 		return NULL;
@@ -292,8 +290,8 @@ static inline struct sound_t * sound_alloc_from_xfs_ogg(struct xfs_context_t * c
 	}
 	if(channel == 1)
 	{
-		int16_t * p = (int16_t *)inbuf;
-		int16_t * q = (int16_t *)ogg;
+		int16_t *p = (int16_t*)inbuf;
+		int16_t *q = (int16_t*)ogg;
 		int16_t v;
 		for(int i = 0; i < isample; i++)
 		{
@@ -306,7 +304,7 @@ static inline struct sound_t * sound_alloc_from_xfs_ogg(struct xfs_context_t * c
 	{
 		memcpy(inbuf, ogg, isample << 2);
 	}
-	sound_resample((int16_t *)snd->source, 48000, osample, (int16_t *)inbuf, rate, isample, 2);
+	sound_resample((int16_t*)snd->source, 48000, osample, (int16_t*)inbuf, rate, isample, 2);
 	free(mem);
 	free(ogg);
 	free(inbuf);
@@ -314,9 +312,9 @@ static inline struct sound_t * sound_alloc_from_xfs_ogg(struct xfs_context_t * c
 	return snd;
 }
 
-struct sound_t * sound_alloc_from_xfs(struct xfs_context_t * ctx, const char * filename)
+struct sound_t* sound_alloc_from_xfs(struct xfs_context_t *ctx, const char *filename)
 {
-	const char * ext = fileext(filename);
+	const char *ext = fileext(filename);
 	if(strcasecmp(ext, "wav") == 0)
 		return sound_alloc_from_xfs_wav(ctx, filename);
 	else if(strcasecmp(ext, "ogg") == 0)
@@ -324,10 +322,10 @@ struct sound_t * sound_alloc_from_xfs(struct xfs_context_t * ctx, const char * f
 	return NULL;
 }
 
-struct sound_t * sound_alloc_tone(int frequency, int millisecond)
+struct sound_t* sound_alloc_tone(int frequency, int millisecond)
 {
-	struct sound_t * snd;
-	uint32_t * p;
+	struct sound_t *snd;
+	uint32_t *p;
 	int16_t v;
 	float t;
 	int sample;
